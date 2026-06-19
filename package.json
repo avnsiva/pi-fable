@@ -1,0 +1,16 @@
+{
+  "name": "pi-fable",
+  "version": "1.0.0",
+  "description": "Fable-style disciplined workflow for pi — goal ledger, findings gate, evidence-based verification",
+  "keywords": ["pi-package", "fable", "workflow", "goals", "findings", "verification"],
+  "license": "AGPL-3.0-or-later",
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  }
+}
