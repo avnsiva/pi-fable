@@ -13,7 +13,7 @@
   "license": "AGPL-3.0-or-later",
   "pi": {
     "extensions": [
-      "./extensions"
+      "./extensions/fable.ts"
     ],
     "skills": [
       "./skills"
@@ -22,6 +22,13 @@
       "./prompts"
     ]
   },
+  "files": [
+    "extensions",
+    "skills",
+    "prompts",
+    "references",
+    "README.md"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"

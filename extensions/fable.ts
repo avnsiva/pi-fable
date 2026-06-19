@@ -553,30 +553,6 @@ Respond with outcome first, then changed files, verification evidence, and resid
       const cwd = ctx.cwd;
       const { action } = params;
 
-      function loadFindings(): FindingsLedger {
-        const data = readJson<FindingsLedger>(cwd, FINDINGS_FILE);
-        if (data) return data;
-        return { created: now(), findings: [] };
-      }
-
-      function saveFindings(data: FindingsLedger): void {
-        data.updated = now();
-        writeJson(cwd, FINDINGS_FILE, data);
-      }
-
-      function activeGoalId(): string {
-        const plan = readJson<GoalPlan>(cwd, GOALS_FILE);
-        if (!plan) return "";
-        const active = plan.goals.filter((g) => g.status === "in_progress");
-        return active.length === 1 ? active[0].id : "";
-      }
-
-      function formatFinding(f: Finding): string {
-        const goal = f.goal ? ` goal=${f.goal}` : "";
-        const location = f.location ? ` location=${f.location}` : "";
-        return `${f.id} [${f.status}] ${f.severity} ${f.title}${goal}${location}`;
-      }
-
       if (action === "add") {
         if (!params.title || !params.evidence) {
           return {
@@ -590,9 +566,9 @@ Respond with outcome first, then changed files, verification evidence, and resid
           };
         }
 
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const id = nextFindingId(data.findings);
-        const goal = params.goal || activeGoalId();
+        const goal = params.goal || activeGoalId(cwd);
 
         const finding: Finding = {
           id,
@@ -611,7 +587,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
         };
 
         data.findings.push(finding);
-        saveFindings(data);
+        saveFindings(cwd, data);
         appendLedger(cwd, "finding_added", {
           id,
           goal,
@@ -626,7 +602,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
       }
 
       if (action === "list") {
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         if (data.findings.length === 0) {
           return {
             content: [{ type: "text", text: "No findings." }],
@@ -655,7 +631,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
       }
 
       if (action === "next") {
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const open = data.findings.filter((f) => f.status === "open");
         if (open.length === 0) {
           return {
@@ -706,7 +682,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
           };
         }
 
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const finding = data.findings.find((f) => f.id === params.findingId);
         if (!finding) {
           return {
@@ -733,7 +709,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
         finding.resolution = params.evidence;
         finding.verify_evidence = params.verifyEvidence;
         finding.updated = now();
-        saveFindings(data);
+        saveFindings(cwd, data);
         appendLedger(cwd, "finding_resolved", { id: params.findingId });
 
         return {
@@ -757,7 +733,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
           };
         }
 
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const finding = data.findings.find((f) => f.id === params.findingId);
         if (!finding) {
           return {
@@ -783,7 +759,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
         finding.status = "rejected";
         finding.resolution = params.reason;
         finding.updated = now();
-        saveFindings(data);
+        saveFindings(cwd, data);
         appendLedger(cwd, "finding_rejected", { id: params.findingId });
 
         return {
@@ -795,7 +771,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
       }
 
       if (action === "gate") {
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const blockers = data.findings.filter(
           (f) => f.status === "open" || f.status === "blocked",
         );
@@ -819,7 +795,7 @@ Respond with outcome first, then changed files, verification evidence, and resid
       }
 
       if (action === "status") {
-        const data = loadFindings();
+        const data = loadFindings(cwd);
         const counts = {
           open: data.findings.filter((f) => f.status === "open").length,
           blocked: data.findings.filter((f) => f.status === "blocked").length,
