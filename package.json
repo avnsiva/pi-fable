@@ -1,6 +1,6 @@
 {
   "name": "pi-fable",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fable-style disciplined workflow for pi — goal ledger, findings gate, evidence-based verification",
   "keywords": [
     "pi-package",
