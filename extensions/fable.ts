@@ -1,106 +1,35 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, appendFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-
-// ── State helpers ──────────────────────────────────────────────────────────
-
-const STATE_DIR = ".fablecodex";
-const GOALS_FILE = "goals.json";
-const FINDINGS_FILE = "findings.json";
-const LEDGER_FILE = "ledger.jsonl";
-
-interface Goal {
-  id: string;
-  title: string;
-  objective: string;
-  status: "pending" | "in_progress" | "complete" | "failed" | "blocked";
-  evidence: string;
-  verify_cmd: string;
-  verify_evidence: string;
-}
-
-interface GoalPlan {
-  brief: string;
-  created: string;
-  goals: Goal[];
-}
-
-interface Finding {
-  id: string;
-  goal: string;
-  title: string;
-  severity: "low" | "medium" | "high" | "critical";
-  source: string;
-  status: "open" | "blocked" | "resolved" | "rejected";
-  location: string;
-  evidence: string;
-  resolution: string;
-  verify_cmd: string;
-  verify_evidence: string;
-  created: string;
-  updated: string;
-}
-
-interface FindingsLedger {
-  created: string;
-  updated?: string;
-  findings: Finding[];
-}
-
-function stateDir(cwd: string): string {
-  return join(cwd, STATE_DIR);
-}
-
-function ensureStateDir(cwd: string): void {
-  const dir = stateDir(cwd);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
-function readJson<T>(cwd: string, file: string): T | null {
-  const path = join(stateDir(cwd), file);
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as T;
-  } catch {
-    return null;
-  }
-}
-
-function writeJson(cwd: string, file: string, data: unknown): void {
-  ensureStateDir(cwd);
-  const path = join(stateDir(cwd), file);
-  writeFileSync(path, JSON.stringify(data, null, 2) + "\n", "utf-8");
-}
-
-function appendLedger(cwd: string, event: string, fields: Record<string, unknown>): void {
-  ensureStateDir(cwd);
-  const path = join(stateDir(cwd), LEDGER_FILE);
-  const record = { ts: new Date().toISOString(), event, ...fields };
-  const line = JSON.stringify(record) + "\n";
-  appendFileSync(path, line, "utf-8");
-}
-
-function now(): string {
-  return new Date().toISOString();
-}
-
-function nextFindingId(findings: Finding[]): string {
-  let max = 0;
-  for (const f of findings) {
-    const m = f.id.match(/^F(\d+)$/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return `F${String(max + 1).padStart(3, "0")}`;
-}
-
-// ── Active fable mode detection ──────────────────────────────────────────
-
-function isFableActive(cwd: string): boolean {
-  const plan = readJson<GoalPlan>(cwd, GOALS_FILE);
-  if (!plan) return false;
-  return plan.goals.some((g) => g.status === "pending" || g.status === "in_progress" || g.status === "failed" || g.status === "blocked");
-}
+import { existsSync, rmSync } from "node:fs";
+import {
+  type Goal,
+  type GoalPlan,
+  type Finding,
+  type FindingsLedger,
+  STATE_DIR,
+  GOALS_FILE,
+  FINDINGS_FILE,
+  stateDir,
+  ensureStateDir,
+  readJson,
+  writeJson,
+  appendLedger,
+  now,
+  nextFindingId,
+  isFableActive,
+  createStarterPlan,
+  advanceGoal,
+  checkpointGoal,
+  loadFindings,
+  saveFindings,
+  activeGoalId,
+  addFinding,
+  resolveFinding,
+  rejectFinding,
+  checkFindingsGate,
+  sortFindings,
+  formatFinding,
+} from "./state";
 
 // ── Extension entry ────────────────────────────────────────────────────────
 
